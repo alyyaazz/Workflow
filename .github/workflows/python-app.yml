@@ -1,0 +1,60 @@
+name: ML Pipeline Advance
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  train-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install Tools
+        run: |
+          pip install mlflow pandas scikit-learn
+
+      - name: Run MLflow Project
+        run: |
+          # Jalankan mlflow pada FOLDER MLProject
+          mlflow run MLProject --env-manager=local
+
+      - name: Capture Run ID
+        run: |
+          # Mengambil folder ID terbaru di dalam mlruns/0
+          RID=$(ls -t mlruns/0 | grep -v "meta.yaml" | head -n 1)
+          echo "RID=$RID" >> $GITHUB_ENV
+          echo "Using Run ID: $RID"
+
+      - name: Push Artifacts to Repo
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add mlruns/
+          git commit -m "Add model artifacts [skip ci]" || echo "No changes"
+          git push
+
+      - name: Build Docker Image
+        run: |
+          mlflow models build-docker --model-uri "runs:/${{ env.RID }}/model" --name "insurance-image"
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Push to Docker Hub
+        run: |
+          IMAGE_PATH=${{ secrets.DOCKER_HUB_USERNAME }}/insurance-image
+          docker tag insurance-image $IMAGE_PATH:latest
+          docker push $IMAGE_PATH:latest
