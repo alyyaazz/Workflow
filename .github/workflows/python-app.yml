@@ -23,13 +23,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
 
-      - name: Install dependencies
+      - name: Install MLflow (manual)
         run: |
-          pip install -r requirements.txt
-
-      - name: Verify MLproject file
-        run: |
-          cat MLproject
+          pip install mlflow pandas numpy scikit-learn
 
       - name: Run MLflow Project
         run: |
