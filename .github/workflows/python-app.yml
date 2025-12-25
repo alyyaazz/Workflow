@@ -24,3 +24,5 @@ jobs:
     - name: Run MLflow Project
       run: |
         mlflow run . --env-manager=local
+
+        
